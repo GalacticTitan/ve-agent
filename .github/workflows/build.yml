@@ -53,8 +53,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest, key: windows-x86_64, exe: ve-agent.exe, suffix: ".exe" }
-          - { os: ubuntu-22.04,   key: linux-x86_64,   exe: ve-agent,     suffix: "" }   # old glibc → runs on more distros
+          - { os: windows-latest,   key: windows-x86_64, exe: ve-agent.exe, suffix: ".exe" }
+          - { os: ubuntu-22.04,     key: linux-x86_64,   exe: ve-agent,     suffix: "" }   # old glibc → runs on more distros
+          - { os: ubuntu-22.04-arm, key: linux-arm64,    exe: ve-agent,     suffix: "" }   # Pi 4/5, ARM servers
+          - { os: macos-14,         key: darwin-arm64,   exe: ve-agent,     suffix: "" }   # Apple Silicon (every Mac since 2020)
     runs-on: ${{ matrix.os }}
     steps:
       - name: source (private, read-only token)
