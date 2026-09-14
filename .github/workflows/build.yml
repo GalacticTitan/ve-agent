@@ -1,0 +1,113 @@
+# Builds the VideoExpress agent from the PRIVATE source repo and publishes the result
+# as a release here. This repo is public so the build minutes are free; the source is
+# fetched at build time with a read-only deploy key and never leaves the runner — nothing
+# but the compiled binaries is uploaded, and the build runs quietly so the public log
+# shows no source.
+#
+# Trigger: push a tag `vX.Y.Z` here (the private repo must have `agent-vX.Y.Z`), or
+# run it by hand with a version + ref. Pull requests never run it (no trigger, no
+# secrets for forks).
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   SOURCE_DEPLOY_KEY     private half of a READ-ONLY deploy key registered on
+#                         GalacticTitan/VideoMinerVideoExpress ("ve-agent CI (read-only)")
+#   MINISIGN_SECRET_KEY   the release signing key (agent/build/sign.py keygen in the source);
+#                         its public half is compiled into the agent
+name: build
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version: { description: "version x.y.z", required: true }
+      ref: { description: "private-repo ref to build", default: "feat/cloud-v2" }
+      publish: { description: "create the release", type: boolean, default: false }
+
+permissions:
+  contents: write          # the release; nothing else
+
+env:
+  SOURCE_REPO: GalacticTitan/VideoMinerVideoExpress
+  PYTHON: "3.13"           # the newest Python Nuitka compiles with; bump with Nuitka's release notes
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      ref: ${{ steps.v.outputs.ref }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            v="${GITHUB_REF_NAME#v}"; ref="agent-v$v"; publish=true
+          else
+            v="${{ inputs.version }}"; ref="${{ inputs.ref }}"; publish="${{ inputs.publish }}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"; echo "ref=$ref" >> "$GITHUB_OUTPUT"; echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: meta
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, key: windows-x86_64, exe: ve-agent.exe, suffix: ".exe" }
+          - { os: ubuntu-22.04,   key: linux-x86_64,   exe: ve-agent,     suffix: "" }   # old glibc → runs on more distros
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: source (private, read-only token)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SOURCE_REPO }}
+          ref: ${{ needs.meta.outputs.ref }}
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON }}" }
+      - run: pip install -q -r agent/requirements-agent.txt nuitka ordered-set zstandard
+      - name: build (Nuitka onefile, quiet)
+        shell: bash
+        run: python agent/build/build.py --onefile --out dist --version "${{ needs.meta.outputs.version }}" > build.log 2>&1 || { tail -40 build.log; exit 1; }
+      - name: name by platform
+        shell: bash
+        run: mkdir out && mv "dist/${{ matrix.exe }}" "out/ve-agent-${{ matrix.key }}${{ matrix.suffix }}" && ls -la out
+      - uses: actions/upload-artifact@v4
+        with: { name: "ve-agent-${{ matrix.key }}", path: out/*, if-no-files-found: error }
+
+  publish:
+    needs: [meta, build]
+    if: needs.meta.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: sign.py + installers from the source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SOURCE_REPO }}
+          ref: ${{ needs.meta.outputs.ref }}
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+          sparse-checkout: agent/build
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON }}" }
+      - run: pip install -q cryptography
+      - uses: actions/download-artifact@v4
+        with: { path: builds, merge-multiple: true }
+      - name: manifest + signature
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          v="${{ needs.meta.outputs.version }}"
+          python agent/build/sign.py manifest --version "$v" --out builds/manifest.json builds/ve-agent-*
+          python agent/build/sign.py sign builds/manifest.json
+          cp agent/build/install.sh agent/build/install.ps1 builds/
+          ls -la builds && cat builds/manifest.json
+      - name: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ needs.meta.outputs.version }}"
+          gh release create "v$v" --repo "$GITHUB_REPOSITORY" --title "ve-agent $v" \
+            --notes "VideoExpress agent $v — install instructions in the README. Every file's sha256 is in manifest.json, which is signed (manifest.json.minisig)." \
+            builds/*
