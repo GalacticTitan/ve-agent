@@ -28,7 +28,7 @@ permissions:
 
 env:
   SOURCE_REPO: GalacticTitan/VideoMinerVideoExpress
-  PYTHON: "3.14"           # the newest Python Nuitka compiles with (Nuitka ≥ 4.2); the dev PC and the server run 3.14 too
+  PYTHON: "3.13"           # NOT 3.14 yet: on the Linux runners 3.14's stdlib zstd has no threading and Nuitka's onefile compressor asks for 4 workers ("nb_workers … valid range is [0, 0]"); re-try when Nuitka handles it
 
 jobs:
   meta:
