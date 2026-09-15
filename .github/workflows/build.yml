@@ -28,7 +28,7 @@ permissions:
 
 env:
   SOURCE_REPO: GalacticTitan/VideoMinerVideoExpress
-  PYTHON: "3.13"           # the newest Python Nuitka compiles with; bump with Nuitka's release notes
+  PYTHON: "3.14"           # the newest Python Nuitka compiles with (Nuitka ≥ 4.2); the dev PC and the server run 3.14 too
 
 jobs:
   meta:
@@ -61,13 +61,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: source (private, read-only token)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.SOURCE_REPO }}
           ref: ${{ needs.meta.outputs.ref }}
           ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON }}" }
       - run: pip install -q -r agent/requirements-agent.txt nuitka ordered-set zstandard
       - name: build (Nuitka onefile, quiet)
@@ -76,7 +76,7 @@ jobs:
       - name: name by platform
         shell: bash
         run: mkdir out && mv "dist/${{ matrix.exe }}" "out/ve-agent-${{ matrix.key }}${{ matrix.suffix }}" && ls -la out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: "ve-agent-${{ matrix.key }}", path: out/*, if-no-files-found: error }
 
   publish:
@@ -85,17 +85,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: sign.py + installers from the source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.SOURCE_REPO }}
           ref: ${{ needs.meta.outputs.ref }}
           ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
           persist-credentials: false
           sparse-checkout: agent/build
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON }}" }
       - run: pip install -q cryptography
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { path: builds, merge-multiple: true }
       - name: manifest + signature
         env:
