@@ -28,7 +28,7 @@ permissions:
 
 env:
   SOURCE_REPO: GalacticTitan/VideoMinerVideoExpress
-  PYTHON: "3.14"           # trial: 3.14 on the 24.04 images (NOT 3.14 on 22.04: on the Linux runners 3.14's stdlib zstd has no threading and Nuitka's onefile compressor asks for 4 workers ("nb_workers … valid range is [0, 0]"); re-try when Nuitka handles it
+  PYTHON: "3.14"           # the newest Python Nuitka compiles with; the dev PC and the server run 3.14 too. Needs the 24.04 Linux images — the 22.04 toolcache 3.14 has a zstd without threading and Nuitka's onefile compressor fails ("nb_workers … valid range is [0, 0]")
 
 jobs:
   meta:
@@ -55,7 +55,7 @@ jobs:
         include:
           - { os: windows-latest,   key: windows-x86_64, exe: ve-agent.exe, suffix: ".exe" }
           - { os: windows-latest,   key: windows-x86_64-noconsole, exe: ve-agentw.exe, suffix: ".exe", flags: "--no-console" }   # the logon task's windowless twin
-          - { os: ubuntu-24.04,     key: linux-x86_64,   exe: ve-agent,     suffix: "" }   # old glibc → runs on more distros
+          - { os: ubuntu-24.04,     key: linux-x86_64,   exe: ve-agent,     suffix: "" }   # glibc ≥ 2.39: Ubuntu 24.04+, Debian 13+, Fedora 40+ (22.04 images cannot build Python 3.14 onefiles, see PYTHON)
           - { os: ubuntu-24.04-arm, key: linux-arm64,    exe: ve-agent,     suffix: "" }   # Pi 4/5, ARM servers
           - { os: macos-14,         key: darwin-arm64,   exe: ve-agent,     suffix: "" }   # Apple Silicon (every Mac since 2020)
     runs-on: ${{ matrix.os }}
