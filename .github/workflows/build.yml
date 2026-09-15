@@ -54,6 +54,7 @@ jobs:
       matrix:
         include:
           - { os: windows-latest,   key: windows-x86_64, exe: ve-agent.exe, suffix: ".exe" }
+          - { os: windows-latest,   key: windows-x86_64-noconsole, exe: ve-agentw.exe, suffix: ".exe", flags: "--no-console" }   # the logon task's windowless twin
           - { os: ubuntu-22.04,     key: linux-x86_64,   exe: ve-agent,     suffix: "" }   # old glibc → runs on more distros
           - { os: ubuntu-22.04-arm, key: linux-arm64,    exe: ve-agent,     suffix: "" }   # Pi 4/5, ARM servers
           - { os: macos-14,         key: darwin-arm64,   exe: ve-agent,     suffix: "" }   # Apple Silicon (every Mac since 2020)
@@ -71,7 +72,7 @@ jobs:
       - run: pip install -q -r agent/requirements-agent.txt nuitka ordered-set zstandard
       - name: build (Nuitka onefile, quiet)
         shell: bash
-        run: python agent/build/build.py --onefile --out dist --version "${{ needs.meta.outputs.version }}" > build.log 2>&1 || { tail -40 build.log; exit 1; }
+        run: python agent/build/build.py --onefile --out dist --version "${{ needs.meta.outputs.version }}" ${{ matrix.flags }} > build.log 2>&1 || { tail -40 build.log; exit 1; }
       - name: name by platform
         shell: bash
         run: mkdir out && mv "dist/${{ matrix.exe }}" "out/ve-agent-${{ matrix.key }}${{ matrix.suffix }}" && ls -la out
