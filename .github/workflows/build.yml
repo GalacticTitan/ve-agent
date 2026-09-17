@@ -70,6 +70,11 @@ jobs:
       - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON }}" }
       - run: pip install -q -r agent/requirements-agent.txt nuitka ordered-set zstandard
+      - uses: actions/setup-node@v7
+        with: { node-version: "24" }
+      - name: studio UI (the brain inside the agent serves it)
+        shell: bash
+        run: npm ci --prefix web --no-audit --no-fund > ui.log 2>&1 && python build_ui.py >> ui.log 2>&1 || { tail -30 ui.log; exit 1; }
       - name: build (Nuitka onefile, quiet)
         shell: bash
         run: python agent/build/build.py --onefile --out dist --version "${{ needs.meta.outputs.version }}" ${{ matrix.flags }} > build.log 2>&1 || { tail -40 build.log; exit 1; }
