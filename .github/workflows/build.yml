@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       version: { description: "version x.y.z", required: true }
-      ref: { description: "private-repo ref to build", default: "feat/cloud-v2" }
+      ref: { description: "private-repo ref to build", default: "main" }
       publish: { description: "create the release", type: boolean, default: false }
 
 permissions:
