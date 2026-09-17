@@ -1,4 +1,4 @@
-# Builds the AIMediaUtils agent from the PRIVATE source repo and publishes the result
+# Builds the Imanginable agent from the PRIVATE source repo and publishes the result
 # as a release here. This repo is public so the build minutes are free; the source is
 # fetched at build time with a read-only deploy key and never leaves the runner — nothing
 # but the compiled binaries is uploaded, and the build runs quietly so the public log
@@ -10,7 +10,7 @@
 #
 # Secrets (Settings → Secrets and variables → Actions):
 #   SOURCE_DEPLOY_KEY     private half of a READ-ONLY deploy key registered on
-#                         GalacticTitan/VideoMinerVideoExpress ("ve-agent CI (read-only)")
+#                         Ikolvi/imanginable ("ve-agent CI (read-only)")
 #   MINISIGN_SECRET_KEY   the release signing key (agent/build/sign.py keygen in the source);
 #                         its public half is compiled into the agent
 name: build
@@ -27,7 +27,7 @@ permissions:
   contents: write          # the release; nothing else
 
 env:
-  SOURCE_REPO: GalacticTitan/VideoMinerVideoExpress
+  SOURCE_REPO: Ikolvi/imanginable
   PYTHON: "3.14"           # the newest Python Nuitka compiles with; the dev PC and the server run 3.14 too. Needs the 24.04 Linux images — the 22.04 toolcache 3.14 has a zstd without threading and Nuitka's onefile compressor fails ("nb_workers … valid range is [0, 0]")
 
 jobs:
@@ -53,11 +53,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest,   key: windows-x86_64, exe: aimediautils.exe, suffix: ".exe" }
-          - { os: windows-latest,   key: windows-x86_64-noconsole, exe: aimediautilsw.exe, suffix: ".exe", flags: "--no-console" }   # the logon task's windowless twin
-          - { os: ubuntu-24.04,     key: linux-x86_64,   exe: aimediautils,     suffix: "" }   # glibc ≥ 2.39: Ubuntu 24.04+, Debian 13+, Fedora 40+ (22.04 images cannot build Python 3.14 onefiles, see PYTHON)
-          - { os: ubuntu-24.04-arm, key: linux-arm64,    exe: aimediautils,     suffix: "" }   # Pi 4/5, ARM servers
-          - { os: macos-14,         key: darwin-arm64,   exe: aimediautils,     suffix: "" }   # Apple Silicon (every Mac since 2020)
+          - { os: windows-latest,   key: windows-x86_64, exe: imanginable.exe, suffix: ".exe" }
+          - { os: windows-latest,   key: windows-x86_64-noconsole, exe: imanginablew.exe, suffix: ".exe", flags: "--no-console" }   # the logon task's windowless twin
+          - { os: ubuntu-24.04,     key: linux-x86_64,   exe: imanginable,     suffix: "" }   # glibc ≥ 2.39: Ubuntu 24.04+, Debian 13+, Fedora 40+ (22.04 images cannot build Python 3.14 onefiles, see PYTHON)
+          - { os: ubuntu-24.04-arm, key: linux-arm64,    exe: imanginable,     suffix: "" }   # Pi 4/5, ARM servers
+          - { os: macos-14,         key: darwin-arm64,   exe: imanginable,     suffix: "" }   # Apple Silicon (every Mac since 2020)
     runs-on: ${{ matrix.os }}
     steps:
       - name: source (private, read-only token)
@@ -80,9 +80,9 @@ jobs:
         run: python agent/build/build.py --onefile --out dist --version "${{ needs.meta.outputs.version }}" ${{ matrix.flags }} > build.log 2>&1 || { tail -40 build.log; exit 1; }
       - name: name by platform
         shell: bash
-        run: mkdir out && mv "dist/${{ matrix.exe }}" "out/aimediautils-${{ matrix.key }}${{ matrix.suffix }}" && ls -la out
+        run: mkdir out && mv "dist/${{ matrix.exe }}" "out/imanginable-${{ matrix.key }}${{ matrix.suffix }}" && ls -la out
       - uses: actions/upload-artifact@v7
-        with: { name: "aimediautils-${{ matrix.key }}", path: out/*, if-no-files-found: error }
+        with: { name: "imanginable-${{ matrix.key }}", path: out/*, if-no-files-found: error }
 
   publish:
     needs: [meta, build]
@@ -107,7 +107,7 @@ jobs:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
         run: |
           v="${{ needs.meta.outputs.version }}"
-          python agent/build/sign.py manifest --version "$v" --out builds/manifest.json builds/aimediautils-*
+          python agent/build/sign.py manifest --version "$v" --out builds/manifest.json builds/imanginable-*
           python agent/build/sign.py sign builds/manifest.json
           cp agent/build/install.sh agent/build/install.ps1 builds/
           ls -la builds && cat builds/manifest.json
@@ -116,6 +116,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           v="${{ needs.meta.outputs.version }}"
-          gh release create "v$v" --repo "$GITHUB_REPOSITORY" --title "aimediautils $v" \
-            --notes "AIMediaUtils agent $v — install instructions in the README. Every file's sha256 is in manifest.json, which is signed (manifest.json.minisig)." \
+          gh release create "v$v" --repo "$GITHUB_REPOSITORY" --title "imanginable $v" \
+            --notes "Imanginable agent $v — install instructions in the README. Every file's sha256 is in manifest.json, which is signed (manifest.json.minisig)." \
             builds/*

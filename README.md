@@ -1,6 +1,6 @@
-# AIMediaUtils agent
+# Imanginable agent
 
-The small program that runs the video work for [AIMediaUtils](https://app.aimediautils.com)
+The small program that runs the video work for [Imanginable](https://app.imanginable.com)
 on **your own computer** — cutting, combining, subtitles, music, export, YouTube upload —
 so your video files never leave your machine. It only does what your studio session tells
 it to; on its own it does nothing.
@@ -12,7 +12,7 @@ This repository holds **releases only**. There is no source here.
 **Windows** (PowerShell):
 
 ```powershell
-irm https://github.com/Ikolvi/aimediautils-agent/releases/latest/download/install.ps1 | iex
+irm https://github.com/Ikolvi/imanginable-agent/releases/latest/download/install.ps1 | iex
 ```
 
 Windows will show a *"Windows protected your PC"* SmartScreen notice the first time
@@ -21,21 +21,21 @@ Windows will show a *"Windows protected your PC"* SmartScreen notice the first t
 **macOS / Linux**:
 
 ```sh
-curl -fsSL https://github.com/Ikolvi/aimediautils-agent/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/Ikolvi/imanginable-agent/releases/latest/download/install.sh | sh
 ```
 
 Or download the file for your platform from the
-[latest release](https://github.com/Ikolvi/aimediautils-agent/releases/latest) and run it
+[latest release](https://github.com/Ikolvi/imanginable-agent/releases/latest) and run it
 from a terminal.
 
 ## Pair it with your studio
 
 ```
-aimediautils pair --brain https://app.aimediautils.com --name my-pc
+imanginable pair --brain https://app.imanginable.com --name my-pc
 ```
 
-Your browser opens the approval page; click **Approve**. Then `aimediautils run`, or
-`aimediautils service install` to have it start at login.
+Your browser opens the approval page; click **Approve**. Then `imanginable run`, or
+`imanginable service install` to have it start at login.
 
 ## Verify a download
 
@@ -54,4 +54,4 @@ The agent does not embed ffmpeg. On first run it downloads a pinned, checksummed
 static build (GPL-licensed, with its licence text alongside) into its own data
 directory, or uses the one already on your PATH.
 
-Privacy policy: <https://app.aimediautils.com/privacy> · Terms: <https://app.aimediautils.com/terms>
+Privacy policy: <https://app.imanginable.com/privacy> · Terms: <https://app.imanginable.com/terms>
