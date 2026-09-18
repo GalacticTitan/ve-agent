@@ -111,11 +111,24 @@ jobs:
           python agent/build/sign.py sign builds/manifest.json
           cp agent/build/install.sh agent/build/install.ps1 builds/
           ls -la builds && cat builds/manifest.json
+      # The release is made empty and then filled one file at a time. Uploading the five
+      # 33-63 MB binaries in one `gh release create` call fails often (HTTP 400, or a 422
+      # "already exists" when gh retries a half-finished upload), and a failed create
+      # deletes the release, so the tag ends up with no build at all. --clobber makes each
+      # upload idempotent, so a retry is just the same command again.
       - name: release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           v="${{ needs.meta.outputs.version }}"
-          gh release create "v$v" --repo "$GITHUB_REPOSITORY" --title "imanginable $v" \
-            --notes "Imanginable agent $v — install instructions in the README. Every file's sha256 is in manifest.json, which is signed (manifest.json.minisig)." \
-            builds/*
+          notes="Imanginable agent $v — install instructions in the README. Every file's sha256 is in manifest.json, which is signed (manifest.json.minisig)."
+          gh release view "v$v" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "v$v" --repo "$GITHUB_REPOSITORY" --title "imanginable $v" --notes "$notes"
+          for f in builds/*; do
+            n=0
+            until gh release upload "v$v" "$f" --repo "$GITHUB_REPOSITORY" --clobber; do
+              n=$((n + 1))
+              if [ "$n" -ge 3 ]; then echo "giving up on $f"; exit 1; fi
+              echo "upload failed ($n), retrying in 15s: $f"; sleep 15
+            done
+          done
