@@ -45,7 +45,9 @@ env:
 
 jobs:
   meta:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: the newest Ubuntu (26.04), and no surprise when the
+    # label moves. The Linux BUILD rows below stay on 24.04 on purpose — see there.
+    runs-on: ubuntu-26.04
     outputs:
       version: ${{ steps.v.outputs.version }}
       ref: ${{ steps.v.outputs.ref }}
@@ -70,6 +72,9 @@ jobs:
           - { os: windows-latest,   key: windows-x86_64-noconsole, exe: imanginablew.exe, suffix: ".exe", flags: "--no-console" }   # the logon task's windowless twin
           - { os: ubuntu-24.04,     key: linux-x86_64,   exe: imanginable,     suffix: "" }   # glibc ≥ 2.39: Ubuntu 24.04+, Debian 13+, Fedora 40+ (22.04 images cannot build Python 3.14 onefiles, see PYTHON)
           - { os: ubuntu-24.04-arm, key: linux-arm64,    exe: imanginable,     suffix: "" }   # Pi 4/5, ARM servers
+          # The Linux rows are NOT on 26.04, deliberately: a binary needs at least the glibc
+          # of the image it was built on, and 26.04's would stop it starting on Ubuntu 24.04,
+          # Debian 13 and Raspberry Pi OS. Move them only when those are no longer targets.
           - { os: macos-14,         key: darwin-arm64,   exe: imanginable,     suffix: "" }   # Apple Silicon (every Mac since 2020)
     runs-on: ${{ matrix.os }}
     steps:
@@ -100,7 +105,7 @@ jobs:
   publish:
     needs: [meta, build]
     if: needs.meta.outputs.publish == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: sign.py + installers from the source
         uses: actions/checkout@v7
