@@ -12,7 +12,7 @@ This repository holds **releases only**. There is no source here.
 **Windows** (PowerShell):
 
 ```powershell
-irm https://github.com/Ikolvi/imanginable-agent/releases/latest/download/install.ps1 | iex
+irm https://dl.imanginable.com/install.ps1 | iex
 ```
 
 Windows will show a *"Windows protected your PC"* SmartScreen notice the first time
@@ -21,12 +21,15 @@ Windows will show a *"Windows protected your PC"* SmartScreen notice the first t
 **macOS / Linux**:
 
 ```sh
-curl -fsSL https://github.com/Ikolvi/imanginable-agent/releases/latest/download/install.sh | sh
+curl -fsSL https://dl.imanginable.com/install.sh | sh
 ```
 
 Or download the file for your platform from the
 [latest release](https://github.com/Ikolvi/imanginable-agent/releases/latest) and run it
 from a terminal.
+
+The files are served from `dl.imanginable.com` (Cloudflare, cached worldwide) — the same
+files as the GitHub release, which the installers fall back to if that address is down.
 
 ## Pair it with your studio
 

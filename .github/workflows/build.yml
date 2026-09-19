@@ -13,6 +13,16 @@
 #                         Ikolvi/imanginable ("ve-agent CI (read-only)")
 #   MINISIGN_SECRET_KEY   the release signing key (agent/build/sign.py keygen in the source);
 #                         its public half is compiled into the agent
+#   R2_ACCESS_KEY_ID      an R2 API token (Object Read & Write on the bucket below) — what
+#   R2_SECRET_ACCESS_KEY  publishes the files to https://dl.imanginable.com, the address
+#                         installers and the agent's self-update fetch from (see below)
+#
+# Where the files go: the GitHub release (history, and the fallback the installers use)
+# AND the Cloudflare R2 bucket behind https://dl.imanginable.com, at fixed names so each
+# release REPLACES the last one there. Clients read from dl.imanginable.com: R2's egress
+# is free and Cloudflare's edge caches the files worldwide, while GitHub's release
+# storage took a minute to answer from some networks. Cache-Control max-age=300 on the
+# objects means a new release shows up at the edge within five minutes.
 name: build
 on:
   push:
@@ -28,6 +38,9 @@ permissions:
 
 env:
   SOURCE_REPO: Ikolvi/imanginable
+  DL_URL: https://dl.imanginable.com                    # the R2 bucket's custom domain
+  R2_BUCKET: imanginable-agent
+  R2_ACCOUNT_ID: e09b6e290483127c3121bba67095241d       # not a secret: it is in every R2 endpoint URL
   PYTHON: "3.14"           # the newest Python Nuitka compiles with; the dev PC and the server run 3.14 too. Needs the 24.04 Linux images — the 22.04 toolcache 3.14 has a zstd without threading and Nuitka's onefile compressor fails ("nb_workers … valid range is [0, 0]")
 
 jobs:
@@ -107,7 +120,7 @@ jobs:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
         run: |
           v="${{ needs.meta.outputs.version }}"
-          python agent/build/sign.py manifest --version "$v" --out builds/manifest.json builds/imanginable-*
+          python agent/build/sign.py manifest --version "$v" --base "$DL_URL" --out builds/manifest.json builds/imanginable-*
           python agent/build/sign.py sign builds/manifest.json
           cp agent/build/install.sh agent/build/install.ps1 builds/
           ls -la builds && cat builds/manifest.json
@@ -132,3 +145,25 @@ jobs:
               echo "upload failed ($n), retrying in 15s: $f"; sleep 15
             done
           done
+      # dl.imanginable.com: builds first, the manifest and its signature last, so the
+      # manifest never names a build that is not there yet. Same names every release.
+      # Missing R2 secrets: the GitHub release above stands and this warns (installers
+      # fall back to GitHub), rather than the whole publish failing.
+      - name: publish to dl.imanginable.com (R2)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required     # R2 does not take the newer CRC headers
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ]; then echo "::warning::R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY not set — $DL_URL was not updated"; exit 0; fi
+          put() {  # put <file> <content-type>
+            aws s3 cp "builds/$1" "s3://$R2_BUCKET/$1" --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com" \
+              --content-type "$2" --cache-control "public, max-age=300" --only-show-errors
+          }
+          for f in builds/imanginable-*; do put "$(basename "$f")" application/octet-stream; done
+          put install.sh text/plain; put install.ps1 text/plain
+          put manifest.json.minisig text/plain
+          put manifest.json application/json
+          echo "published $(ls builds | wc -l) files to $DL_URL"
